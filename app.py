@@ -29,31 +29,25 @@ def webhook():
 
 
 def processRequest(req):
-    if req.get("result").get("action") != "yahooWeatherForecast":
+    if req.get("result").get("action") != "check-release-state":
         return {}
-    baseurl = "https://query.yahooapis.com/v1/public/yql?"
-    yql_query = makeYqlQuery(req)
-    if yql_query is None:
-        return {}
-    yql_url = baseurl + urllib.urlencode({'q': yql_query}) + "&format=json"
-    result = urllib.urlopen(yql_url).read()
-    data = json.loads(result)
-    res = makeWebhookResult(data)
+    res = makeWebhookResult(req)
     return res
 
 
 def makeYqlQuery(req):
     result = req.get("result")
     parameters = result.get("parameters")
-    city = parameters.get("geo-city")
-    if city is None:
+    city = parameters.get("release-name")
+    if releaseName is None:
         return None
 
     return "select * from weather.forecast where woeid in (select woeid from geo.places(1) where text='" + city + "')"
 
 
-def makeWebhookResult(data):
-    parameters = data.get('parameters')
+def makeWebhookResult(req):
+    result = req.get("result")
+    parameters = result.get('parameters')
     if parameters is None:
         return {}
 
@@ -63,7 +57,7 @@ def makeWebhookResult(data):
 
     # print(json.dumps(item, indent=4))
 
-    speech = releaseName + "release is not running."
+    speech = releaseName + " release is not running."
 
     print("Response:")
     print(speech)
