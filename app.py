@@ -43,6 +43,7 @@ def processRequest(req):
 
 
 def findBuildState(buildName, buildNumber):
+    print buildName, buildNumber
     bambooBuildName = buildNamesMap.get(buildName)
     buildURL = bambooBaseURL + "result/" + str(bambooBuildName) + "/"
     if buildNumber is None:
