@@ -3,6 +3,8 @@
 import urllib
 import json
 import os
+import requests
+import logging
 
 from flask import Flask
 from flask import request
@@ -11,6 +13,11 @@ from flask import make_response
 # Flask app should start in global layout
 app = Flask(__name__)
 
+bambooBaseURL = "http://build.orioncb.com/rest/api/latest/"
+buildNamesMap = {"beta":"DEPL-BET0", "prod":"DEPL-BET1", "ibank":"DEPL-IBD2"}
+
+BAMBOO_PASS = os.environ['BAMBOO_PASS']
+BAMBOO_USER = os.environ['BAMBOO_USER']
 
 @app.route('/webhook', methods=['POST'])
 def webhook():
@@ -35,14 +42,17 @@ def processRequest(req):
     return res
 
 
-def makeYqlQuery(req):
-    result = req.get("result")
-    parameters = result.get("parameters")
-    city = parameters.get("release-name")
-    if releaseName is None:
-        return None
-
-    return "select * from weather.forecast where woeid in (select woeid from geo.places(1) where text='" + city + "')"
+def findBuildState(buildName, buildNumber):
+    bambooBuildName = buildNamesMap.get(buildName)
+    buildURL = bambooBaseURL + "result/" + str(bambooBuildName) + "/"
+    if buildNumber is None:
+        buildNumber = "latest"
+    buildQueryResult = requests.get(buildURL + str(buildNumber), headers={'content-type': 'application/json','Accept': 'application/json'}, auth=(BAMBOO_USER, BAMBOO_PASS))
+    buildQueryResultJSON = json.loads(buildQueryResult.text)
+    logging.debug(buildQueryResultJSON)
+    buildState = buildQueryResultJSON.get("state")
+    buildNumber = buildQueryResultJSON.get("buildNumber")
+    return buildNumber, buildState
 
 
 def makeWebhookResult(req):
@@ -55,9 +65,25 @@ def makeWebhookResult(req):
     if releaseName is None:
         return {}
 
+    releaseState = parameters.get('release-state')
+    if releaseState is None:
+        return {}
+
+    buildNumberLatest, buildStateLatest = findBuildState(releaseName, None)
+    if buildStateLatest == "Successful":
+        buildNumberCurrent, buildStateCurrent = findBuildState(releaseName, buildNumberLatest+1)
+        if buildStateCurrent is None:
+            result = "Complete"
+        elif buildStateCurrent == "Unknown":
+            result = "Running"
+        elif buildStateCurrent == "Successful":
+            result = "Complete"
+    else:
+        result = "Failed"
+
     # print(json.dumps(item, indent=4))
 
-    speech = releaseName + " release is not running."
+    speech = releaseName + " release is " + result
 
     print("Response:")
     print(speech)
