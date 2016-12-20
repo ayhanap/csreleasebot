@@ -21,15 +21,15 @@ class TestStringMethods(unittest.TestCase):
         with self.assertRaises(TypeError):
             s.split(2)
     def testBambooReleaseResult(self):
-        buildNumber, buildState = app.findBuildState("ibank","1527")
-        print buildNumber, buildState
-        self.assertEqual(buildNumber, 1527)
-        self.assertEqual(buildState, "Successful")
+        build = app.findSingleBuildState("ibank", "1527")
+        print build.buildNumber, build.buildState
+        self.assertEqual(build.buildNumber, 1527)
+        self.assertEqual(build.buildState, "Successful")
 
     def testBambooReleaseResultOneParam(self):
-        buildNumber, buildState = app.findBuildState("ibank",None)
-        print buildNumber, buildState
-        self.assertEqual(buildState, "Successful")
+        build = app.findSingleBuildState("ibank", None)
+        print build.buildNumber, build.buildState
+        self.assertEqual(build.buildState, "Successful")
 
 if __name__ == '__main__':
     unittest.main()
