@@ -31,5 +31,10 @@ class TestStringMethods(unittest.TestCase):
         print build.buildNumber, build.buildState
         self.assertEqual(build.buildState, "Successful")
 
+
+    def testFindNextBuildTime(self):
+        app.findNextBuildTime('beta')
+
+
 if __name__ == '__main__':
     unittest.main()

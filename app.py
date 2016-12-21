@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 
-import urllib
 import json
 import os
 import requests
 import logging
+import datetime as dt
+import pytz
 
 from enum import Enum
 
@@ -16,7 +17,17 @@ from flask import make_response
 app = Flask(__name__)
 
 bambooBaseURL = "http://build.orioncb.com/rest/api/latest/"
-buildNamesMap = {"beta":"DEPL-BET0", "prod":"DEPL-BET1", "alfa":"DEPL-GEN1", "dev":"DEPL-GEN0", "ibank":"DEPL-IBD2"}
+buildNamesMap = {"beta": "DEPL-BET0", "prod": "DEPL-BET1", "alfa": "DEPL-GEN1", "dev": "DEPL-GEN0", "ibank": "DEPL-IBD2"}
+buildSchedulesMap = {
+    "beta": [dt.time(7, 0, 0), dt.time(12, 0, 0), dt.time(16, 0, 0), dt.time(19, 0, 0)],
+    "prod": [dt.time(12, 0, 0), dt.time(22, 0, 0)],
+    "dev": [dt.time(10, 0, 0), dt.time(11, 0, 0), dt.time(12, 0, 0), dt.time(14, 0, 0),
+                  dt.time(15, 0, 0), dt.time(16, 0, 0), dt.time(17, 0, 0), dt.time(18, 0, 0),
+                  dt.time(19, 0, 0), dt.time(20, 0, 0), dt.time(21, 0, 0)],
+    "alfa": [dt.time(10, 30, 0), dt.time(12, 30, 0), dt.time(15, 30, 0), dt.time(17, 30, 0),
+                  dt.time(19, 30, 0), dt.time(20, 30, 0), dt.time(21, 30, 0), dt.time(22, 30, 0)],
+    "ibank": [dt.time(0, 0, 0)],
+                     }
 
 BAMBOO_PASS = os.environ['BAMBOO_PASS']
 BAMBOO_USER = os.environ['BAMBOO_USER']
@@ -27,6 +38,7 @@ class Build(object):
     buildNumber = None
     buildStartedTime = None
     buildCompletedTime = None
+    buildRelativeTime = None
     percentageCompletedPretty = None
     prettyTimeRemaining = None
     startedTime = None
@@ -80,6 +92,7 @@ def findSingleBuildState(buildName, buildNumber):
     build.buildNumber = buildQueryResultJSON.get("buildNumber")
     build.buildStartedTime = buildQueryResultJSON.get("buildStartedTime")
     build.buildCompletedTime = buildQueryResultJSON.get("buildCompletedTime")
+    build.buildRelativeTime = buildQueryResultJSON.get("buildRelativeTime")
     progress = buildQueryResultJSON.get("progress")
     if progress is not None:
         build.percentageCompletedPretty = progress.get("percentageCompletedPretty")
@@ -109,6 +122,14 @@ def findBuildState(buildName):
         build = buildLatest
     return result, build
 
+def findNextBuildTime(buildName):
+    currTime = dt.datetime.now(pytz.timezone('Europe/Istanbul'))
+    for buildTime in buildSchedulesMap.get(buildName):
+        timeToNextBuild =  dt.timedelta(hours=buildTime.hour, minutes=buildTime.minute, seconds=buildTime.second) - \
+              dt.timedelta(hours=currTime.hour, minutes=currTime.minute, seconds=currTime.minute)
+        if timeToNextBuild > dt.timedelta():
+            print timeToNextBuild
+            return timeToNextBuild, buildTime
 
 def makeCommonResponse(speech):
     print("Response:")
@@ -151,20 +172,37 @@ def checkReleaseTime(req):
     if releaseName is None:
         return {}
 
+    tense = parameters.get('tense')
+
     releaseState = parameters.get('release-state')
 
     result, build = findBuildState(releaseName)
     speech = "I don't know"
     if releaseState == 'complete':
-        if result == BuildState.COMPLETE:
-            speech = releaseName + " release is already Completed."
-        elif result == BuildState.RUNNING:
-            speech = releaseName + " realease will be completed in " + build.prettyTimeRemaining
+        if tense == 'future':
+            if result == BuildState.COMPLETE:
+                speech = releaseName + " release is already completed " + build.buildRelativeTime + "."
+            elif result == BuildState.RUNNING:
+                speech = releaseName + " release will be completed in " + build.prettyTimeRemaining
+        elif tense == 'past':
+            if result == BuildState.COMPLETE:
+                speech = releaseName + " release is completed " + build.buildRelativeTime + "."
+            elif result == BuildState.RUNNING:
+                speech = releaseName + " release will be completed in " + build.prettyTimeRemaining
     elif releaseState == 'running':
-        if result == BuildState.COMPLETE:
-            speech = releaseName + " release is already Completed."
-        elif result == BuildState.RUNNING:
-            speech = releaseName + " realease started " + build.prettyStartedTime
+        if tense == 'future':
+            if result == BuildState.COMPLETE:
+                timeToNextBuild, buildTime = findNextBuildTime(releaseName)
+                speech = releaseName + " release will start in " + str(timeToNextBuild) + " hours." #TODO: beautify time text
+            elif result == BuildState.RUNNING:
+                speech = releaseName + " release started " + build.prettyStartedTime
+        elif tense == 'past':
+            if result == BuildState.COMPLETE:
+                speech = releaseName + " release completed " + build.buildRelativeTime + "."
+            elif result == BuildState.RUNNING:
+                speech = releaseName + " release started " + build.prettyStartedTime
+        else:
+            speech = "I don't know"
     elif releaseState == 'failed':
         speech = "I don't know"
     else:
