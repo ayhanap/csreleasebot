@@ -143,6 +143,13 @@ def makeCommonResponse(speech):
         "source": "csreleasebot"
     }
 
+def getParameter(parameters, contextParameters, parameterName):
+    parameter = parameters.get(parameterName)
+    if parameter is None:
+        if contextParameters is not None:
+            parameter = contextParameters.get(parameterName)
+    return parameter
+
 
 def checkReleaseState(req):
     result = req.get("result")
@@ -165,16 +172,20 @@ def checkReleaseState(req):
 def checkReleaseTime(req):
     result = req.get("result")
     parameters = result.get('parameters')
+    contexts = result.get('contexts')
+    contextParameters = None
+    for context in contexts:
+        if context.get('name') == 'release-name-context':
+            contextParameters = context.get('parameters')
+
     if parameters is None:
         return {}
 
-    releaseName = parameters.get('release-name')
-    if releaseName is None:
-        return {}
+    releaseName = getParameter(parameters,contextParameters, 'release-name')
 
-    tense = parameters.get('tense')
+    tense = getParameter(parameters,contextParameters, 'tense')
 
-    releaseState = parameters.get('release-state')
+    releaseState = getParameter(parameters,contextParameters, 'release-state')
 
     result, build = findBuildState(releaseName)
     speech = "I don't know"
