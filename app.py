@@ -207,6 +207,7 @@ def checkReleaseTime(req):
         speech = "I don't know"
     else:
         if tense == 'future':
+            timeToNextBuild, buildTime = findNextBuildTime(releaseName)
             speech = releaseName + " release will start in " + str(timeToNextBuild) + " hours." #TODO: beautify time text
         elif tense == 'past':
             if result == BuildState.COMPLETE:
