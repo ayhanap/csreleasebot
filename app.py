@@ -206,7 +206,13 @@ def checkReleaseTime(req):
     elif releaseState == 'failed':
         speech = "I don't know"
     else:
-        speech = "I don't know"
+        if tense == 'future':
+            speech = releaseName + " release will start in " + str(timeToNextBuild) + " hours." #TODO: beautify time text
+        elif tense == 'past':
+            if result == BuildState.COMPLETE:
+                speech = releaseName + " release completed " + build.buildRelativeTime + "."
+            elif result == BuildState.RUNNING:
+                speech = releaseName + " release started " + build.prettyStartedTime
 
     return makeCommonResponse(speech)
 
