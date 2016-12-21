@@ -192,16 +192,16 @@ def checkReleaseTime(req):
     if parameters is None:
         return {}
 
-    releaseName = getParameter(parameters,contextParameters, 'release-name')
+    releaseName = getParameter(req, 'release-name-context', 'release-name')
 
-    tense = getParameter(parameters,contextParameters, 'tense')
+    tense = getParameter(req, 'release-name-context', 'tense')
 
-    releaseState = getParameter(parameters,contextParameters, 'release-state')
+    releaseState = getParameter(req, 'release-name-context', 'release-state')
 
     result, build = findBuildState(releaseName)
     speech = "I don't know"
     if releaseState == 'complete':
-        if tense == 'future':
+        if tense == 'future' or tense is None:
             if result == BuildState.COMPLETE:
                 speech = "%s release is already completed %s." % (releaseName, build.buildRelativeTime)
             elif result == BuildState.RUNNING:
@@ -212,7 +212,7 @@ def checkReleaseTime(req):
             elif result == BuildState.RUNNING:
                 speech = "%s release will be completed in %s" % (releaseName, build.prettyTimeRemaining)
     elif releaseState == 'running':
-        if tense == 'future':
+        if tense == 'future' or tense is None:
             if result == BuildState.COMPLETE:
                 timeToNextBuild, buildTime = findNextBuildTime(releaseName)
                 speech = "%s release will start in %s hours." % (releaseName, str(timeToNextBuild)) #TODO: beautify time text
@@ -223,12 +223,10 @@ def checkReleaseTime(req):
                 speech = "%s release completed %s" % (releaseName, build.buildRelativeTime)
             elif result == BuildState.RUNNING:
                 speech = "%s release started %s." % (releaseName, build.prettyStartedTime)
-        else:
-            speech = "I don't know"
     elif releaseState == 'failed':
         speech = "I don't know"
     else:
-        if tense == 'future':
+        if tense == 'future' or tense is None:
             timeToNextBuild, buildTime = findNextBuildTime(releaseName)
             speech = "%s release will start in %s hours." % (releaseName, str(timeToNextBuild)) #TODO: beautify time text
         elif tense == 'past':
