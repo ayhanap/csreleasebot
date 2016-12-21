@@ -1,1 +1,1 @@
-web: python bot/app.py
+web: python csreleasebot/app.py
