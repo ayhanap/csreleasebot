@@ -1,9 +1,11 @@
-import unittest
-import app
 import logging
+import unittest
+
+from csreleasebot import app
 
 logger = logging.getLogger()
 logger.level = logging.DEBUG
+
 
 class TestStringMethods(unittest.TestCase):
 
@@ -20,6 +22,7 @@ class TestStringMethods(unittest.TestCase):
         # check that s.split fails when the separator is not a string
         with self.assertRaises(TypeError):
             s.split(2)
+
     def testBambooReleaseResult(self):
         build = app.findSingleBuildState("ibank", "1527")
         print build.buildNumber, build.buildState
@@ -30,7 +33,6 @@ class TestStringMethods(unittest.TestCase):
         build = app.findSingleBuildState("ibank", None)
         print build.buildNumber, build.buildState
         self.assertEqual(build.buildState, "Successful")
-
 
     def testFindNextBuildTime(self):
         app.findNextBuildTime('beta')

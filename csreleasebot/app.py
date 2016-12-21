@@ -51,7 +51,6 @@ class BuildState(Enum):
     FAILED = 'Failed'
 
 
-
 @app.route('/webhook', methods=['POST'])
 def webhook():
     req = request.get_json(silent=True, force=True)
@@ -122,6 +121,7 @@ def findBuildState(buildName):
         build = buildLatest
     return result, build
 
+
 def findNextBuildTime(buildName):
     currTime = dt.datetime.now(pytz.timezone('Europe/Istanbul'))
     for buildTime in buildSchedulesMap.get(buildName):
@@ -130,6 +130,7 @@ def findNextBuildTime(buildName):
         if timeToNextBuild > dt.timedelta():
             print timeToNextBuild
             return timeToNextBuild, buildTime
+
 
 def makeCommonResponse(speech):
     print("Response:")
@@ -143,7 +144,16 @@ def makeCommonResponse(speech):
         "source": "csreleasebot"
     }
 
-def getParameter(parameters, contextParameters, parameterName):
+
+def getParameter(req, contextName, parameterName):
+    result = req.get("result")
+    parameters = result.get('parameters')
+    contexts = result.get('contexts')
+    contextParameters = None
+    for context in contexts:
+        if context.get('name') == contextName:
+            contextParameters = context.get('parameters')
+
     parameter = parameters.get(parameterName)
     if parameter is None:
         if contextParameters is not None:
@@ -157,17 +167,18 @@ def checkReleaseState(req):
     if parameters is None:
         return {}
 
-    releaseName = parameters.get('release-name')
+    releaseName = getParameter(req, 'release-name-context', 'release-name')
     if releaseName is None:
         return {}
 
-    releaseState = parameters.get('release-state')
+    releaseState = getParameter(req, 'release-name-context', 'release-state')
     if releaseState is None:
         return {}
 
     result, build = findBuildState(releaseName)
-    speech = releaseName + " release is " + result.value
+    speech = "%s release is %s" % (releaseName, result.value)
     return makeCommonResponse(speech)
+
 
 def checkReleaseTime(req):
     result = req.get("result")
@@ -192,26 +203,26 @@ def checkReleaseTime(req):
     if releaseState == 'complete':
         if tense == 'future':
             if result == BuildState.COMPLETE:
-                speech = releaseName + " release is already completed " + build.buildRelativeTime + "."
+                speech = "%s release is already completed %s." % (releaseName, build.buildRelativeTime)
             elif result == BuildState.RUNNING:
-                speech = releaseName + " release will be completed in " + build.prettyTimeRemaining
+                speech = "%s release will be completed in %s" % (releaseName, build.prettyTimeRemaining)
         elif tense == 'past':
             if result == BuildState.COMPLETE:
-                speech = releaseName + " release is completed " + build.buildRelativeTime + "."
+                speech = "%s release is completed %s" % (releaseName, build.buildRelativeTime)
             elif result == BuildState.RUNNING:
-                speech = releaseName + " release will be completed in " + build.prettyTimeRemaining
+                speech = "%s release will be completed in %s" % (releaseName, build.prettyTimeRemaining)
     elif releaseState == 'running':
         if tense == 'future':
             if result == BuildState.COMPLETE:
                 timeToNextBuild, buildTime = findNextBuildTime(releaseName)
-                speech = releaseName + " release will start in " + str(timeToNextBuild) + " hours." #TODO: beautify time text
+                speech = "%s release will start in %s hours." % (releaseName, str(timeToNextBuild)) #TODO: beautify time text
             elif result == BuildState.RUNNING:
-                speech = releaseName + " release started " + build.prettyStartedTime
+                speech = "%s release started %s." % (releaseName, build.prettyStartedTime)
         elif tense == 'past':
             if result == BuildState.COMPLETE:
-                speech = releaseName + " release completed " + build.buildRelativeTime + "."
+                speech = "%s release completed %s" % (releaseName, build.buildRelativeTime)
             elif result == BuildState.RUNNING:
-                speech = releaseName + " release started " + build.prettyStartedTime
+                speech = "%s release started %s." % (releaseName, build.prettyStartedTime)
         else:
             speech = "I don't know"
     elif releaseState == 'failed':
@@ -219,12 +230,12 @@ def checkReleaseTime(req):
     else:
         if tense == 'future':
             timeToNextBuild, buildTime = findNextBuildTime(releaseName)
-            speech = releaseName + " release will start in " + str(timeToNextBuild) + " hours." #TODO: beautify time text
+            speech = "%s release will start in %s hours." % (releaseName, str(timeToNextBuild)) #TODO: beautify time text
         elif tense == 'past':
             if result == BuildState.COMPLETE:
-                speech = releaseName + " release completed " + build.buildRelativeTime + "."
+                speech = "%s release completed %s" % (releaseName, build.buildRelativeTime)
             elif result == BuildState.RUNNING:
-                speech = releaseName + " release started " + build.prettyStartedTime
+                speech = "%s release started %s." % (releaseName, build.prettyStartedTime)
 
     return makeCommonResponse(speech)
 
