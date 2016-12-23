@@ -39,6 +39,7 @@ class Build(object):
     buildStartedTime = None
     buildCompletedTime = None
     buildRelativeTime = None
+    lifeCycleState = None
     percentageCompletedPretty = None
     prettyTimeRemaining = None
     startedTime = None
@@ -92,6 +93,7 @@ def findSingleBuildState(buildName, buildNumber):
     build.buildStartedTime = buildQueryResultJSON.get("buildStartedTime")
     build.buildCompletedTime = buildQueryResultJSON.get("buildCompletedTime")
     build.buildRelativeTime = buildQueryResultJSON.get("buildRelativeTime")
+    build.lifeCycleState = buildQueryResultJSON.get("lifeCycleState")
     progress = buildQueryResultJSON.get("progress")
     if progress is not None:
         build.percentageCompletedPretty = progress.get("percentageCompletedPretty")
@@ -110,7 +112,7 @@ def findBuildState(buildName):
         if buildCurrent.buildState is None:
             result = BuildState.COMPLETE
             build = buildLatest
-        elif buildCurrent.buildState == "Unknown":
+        elif buildCurrent.buildState == "Unknown" and buildCurrent.lifeCycleState == 'InProgress':
             result = BuildState.RUNNING
             build = buildCurrent
         elif buildCurrent.buildState == "Successful":
