@@ -1,0 +1,44 @@
+checkTimeResults:
+  - askedBuildState: complete
+    sub:
+      - tense: future
+        sub:
+          - currentBuildState: Complete
+            msg: '{releaseName} release is already completed {build.buildRelativeTime}.'
+          - currentBuildState: Running
+            msg: '{releaseName} will be completed in {build.prettyTimeRemaining}.'
+      - tense: past
+        sub:
+          - currentBuildState: Complete
+            msg: '{releaseName} release is completed {build.buildRelativeTime}.'
+          - currentBuildState: Running
+            msg: '{releaseName} will be completed in {build.prettyTimeRemaining}.'
+  - askedBuildState: running
+    sub:
+      - tense: [future,None]
+        sub:
+          - currentBuildState: Complete
+            msg: '{releaseName} release will start in {timeToNextBuild} hours.'
+          - currentBuildState: Running
+            msg: '{releaseName} release started {build.prettyStartedTime}.'
+      - tense: past
+        sub:
+          - currentBuildState: Complete
+            msg: '{releaseName} release is completed {build.buildRelativeTime}.'
+          - currentBuildState: Running
+            msg: '{releaseName} will be completed in {build.prettyTimeRemaining}.'
+  - askedBuildState: failed
+    msg: 'I don''t know'
+  - sub:
+      - tense: [future,None]
+        sub:
+          - currentBuildState: Complete
+            msg: '{releaseName} release will start in {timeToNextBuild} hours.'
+          - currentBuildState: Running
+            msg: '{releaseName} release started {build.prettyStartedTime}. Next scheduled time is in {timeToNextBuild} hours.'
+      - tense: past
+        sub:
+          - currentBuildState: Complete
+            msg: '{releaseName} release is completed {build.buildRelativeTime}.'
+          - currentBuildState: Running
+            msg: '{releaseName} release started {build.prettyStartedTime}.'
