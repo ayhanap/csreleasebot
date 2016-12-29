@@ -22,8 +22,8 @@ buildSchedulesMap = {
     "ibank": [dt.time(0, 0, 0)],
 }
 
-BAMBOO_PASS = os.environ['BAMBOO_PASS']
 BAMBOO_USER = os.environ['BAMBOO_USER']
+BAMBOO_PASS = os.environ['BAMBOO_PASS']
 
 
 class Build(object):
@@ -45,14 +45,18 @@ class BuildState(Enum):
     FAILED = 'Failed'
 
 
-def findSingleBuildState(buildName, buildNumber):
-    print buildName, buildNumber
+def getBuildResult(buildName, buildNumber):
     bambooBuildName = buildNamesMap.get(buildName)
     buildURL = bambooBaseURL + "result/" + str(bambooBuildName) + "/"
     if buildNumber is None:
         buildNumber = "latest"
     buildQueryResult = requests.get(buildURL + str(buildNumber), headers={'content-type': 'application/json','Accept': 'application/json'}, auth=(BAMBOO_USER, BAMBOO_PASS))
     buildQueryResultJSON = json.loads(buildQueryResult.text)
+    return buildQueryResultJSON
+
+
+def findSingleBuildState(buildName, buildNumber):
+    buildQueryResultJSON = getBuildResult(buildName, buildNumber)
     logging.debug(buildQueryResultJSON)
     build = Build()
     build.buildState = buildQueryResultJSON.get("state")
@@ -97,8 +101,13 @@ def findNextBuildTime(buildName):
         nextBuildTime = dt.timedelta(hours=buildTime.hour, minutes=buildTime.minute, seconds=buildTime.second) - \
                            dt.timedelta(hours=currTime.hour, minutes=currTime.minute, seconds=currTime.minute)
         if nextBuildTime > dt.timedelta():
-            print nextBuildTime
             return nextBuildTime, buildTime
+
+
+def timeToNextBuild(parameters):
+    releaseName = parameters.get('releaseName')
+    timeToNextBuildVar, buildTime = findNextBuildTime(releaseName)
+    return str(timeToNextBuildVar) #TODO: beautify time text
 
 
 def checkReleaseState(req):
@@ -120,12 +129,6 @@ def checkReleaseState(req):
     return Common.makeCommonResponse(speech)
 
 
-def timeToNextBuild(parameters):
-    releaseName = parameters.get('releaseName')
-    timeToNextBuildVar, buildTime = findNextBuildTime(releaseName)
-    return str(timeToNextBuildVar) #TODO: beautify time text
-
-
 def checkReleaseTime(req):
     result = req.get("result")
     parameters = result.get('parameters')
@@ -143,7 +146,7 @@ def checkReleaseTime(req):
 
     matchParameters = {'askedBuildState': askedReleaseState, 'tense': tense, 'currentBuildState': currentBuildState.value}
 
-    message = Common.getMessageFromFile('csreleasebot/outputs.yaml', 'checkTimeResults', matchParameters)
+    message = Common.getMessageFromFile('outputs.yaml', 'checkTimeResults', matchParameters)
 
     message = Common.fillParameters({'releaseName': releaseName, 'build': build, 'timeToNextBuild': timeToNextBuild}, message)
 

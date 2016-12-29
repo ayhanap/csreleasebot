@@ -1,5 +1,6 @@
 import yaml
 import re
+import sys,os
 
 
 def makeCommonResponse(speech):
@@ -59,7 +60,8 @@ def __handleChildParameters(valuesToFill, parameterParts, child):
 
 
 def getMessageFromFile(fileName, modelName, parameters):
-    allModels = yaml.load(open(fileName, 'r'))
+    fullFilePath = os.path.join(os.path.dirname(__file__), fileName)
+    allModels = yaml.load(open(fullFilePath, 'r'))
     model = allModels.get(modelName)
     return __handleItems(model, parameters)
 

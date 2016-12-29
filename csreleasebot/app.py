@@ -9,6 +9,7 @@ from flask import make_response
 
 # Flask app should start in global layout
 from csreleasebot import BambooAdapter
+from csreleasebot import JiraAdapter
 
 app = Flask(__name__)
 
@@ -35,6 +36,8 @@ def processRequest(req):
         return BambooAdapter.checkReleaseState(req)
     elif result.get("action") == "check-release-time":
         return BambooAdapter.checkReleaseTime(req)
+    elif result.get("action") == "check-issue-state":
+        return JiraAdapter.checkIssueState(req)
     else:
         return {}
 
