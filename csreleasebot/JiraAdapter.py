@@ -82,7 +82,10 @@ class Issue(object):
             return self.statusCategoryId == 3 and self.resolutionId == 1
         else:
             lastReleaseIssue = self.getLastReleaseIssue()
-            return lastReleaseIssue.isDeployed
+            if lastReleaseIssue is None:
+                return False
+            else:
+                return lastReleaseIssue.isDeployed
 
     @property
     def deploymentDate(self):
@@ -137,5 +140,25 @@ def checkIssueState(req):
     issueNo = Common.getParameter(req, None, 'issueNo')
     issue = Issue.fromIssueNo(issueNo)
     speech = '%s is %s.' % (issue.key, issue.statusName)
+
+    return Common.makeCommonResponse(speech)
+
+
+def checkIssueDeploymentState(req):
+    result = req.get("result")
+    parameters = result.get('parameters')
+
+    if parameters is None:
+        return {}
+
+    issueNo = Common.getParameter(req, None, 'issueNo')
+    tense = Common.getParameter(req, None, 'tense')
+
+    issue = Issue.fromIssueNo(issueNo)
+
+    if issue.isDeployed:
+        speech = '%s is already Deployed.' % issue.key
+    else:
+        speech = '%s is not Deployed.' % issue.key
 
     return Common.makeCommonResponse(speech)

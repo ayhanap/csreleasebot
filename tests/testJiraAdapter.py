@@ -61,7 +61,7 @@ class TestJiraAdapter(unittest.TestCase):
         self.assertTrue(issue.isDeployed)
 
     def testCheckIfIssueNotDeployed(self):
-        issueNo = 'CDBR-909'
+        issueNo = 'CDB-1089'
         issue = Issue.fromIssueNo(issueNo)
         self.assertFalse(issue.isDeployed)
 
@@ -109,6 +109,46 @@ class TestJiraAdapter(unittest.TestCase):
         resultJSON = JiraAdapter.checkIssueState(req)
         speech = resultJSON.get('speech')
         self.assertEqual(speech, "CDBT-4289 is Closed.")
+
+    def testCheckIssueDeploymentIntent(self):
+        req = {
+            "id": "479382fa-3943-4e6b-a813-2c1e1fe7f0c7",
+            "timestamp": "2016-12-29T11:28:25.994Z",
+            "result": {
+                "source": "agent",
+                "resolvedQuery": "when will CDBT-4289 deploy?",
+                "action": "",
+                "actionIncomplete": 'false',
+                "parameters": {
+                    "issueNo": "CDBT-4289",
+                    "tense": "future"
+                },
+                "contexts": [],
+                "metadata": {
+                    "intentId": "ff482890-da5b-4f3a-90e3-695ef34f8af4",
+                    "webhookUsed": "true",
+                    "webhookForSlotFillingUsed": "false",
+                    "intentName": "Issue-check-deployment"
+                },
+                "fulfillment": {
+                    "messages": [
+                        {
+                            "type": 0,
+                            "speech": ""
+                        }
+                    ]
+                },
+                "score": 1
+            },
+            "status": {
+                "code": 200,
+                "errorType": "success"
+            },
+            "sessionId": "b384a12d-9034-48d4-8b1c-85edb776fd72"
+        }
+        resultJSON = JiraAdapter.checkIssueDeploymentState(req)
+        speech = resultJSON.get('speech')
+        self.assertEqual(speech, "CDBT-4289 is already Deployed.")
 
 
 if __name__ == '__main__':
