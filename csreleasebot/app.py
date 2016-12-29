@@ -38,6 +38,8 @@ def processRequest(req):
         return BambooAdapter.checkReleaseTime(req)
     elif result.get("action") == "check-issue-state":
         return JiraAdapter.checkIssueState(req)
+    elif result.get("action") == "check-issue-deployment":
+        return JiraAdapter.checkIssueDeploymentState(req)
     else:
         return {}
 
