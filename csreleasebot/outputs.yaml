@@ -1,4 +1,4 @@
-checkTimeResults:
+checkReleaseTime:
   - askedBuildState: complete
     sub:
       - tense: future
@@ -42,3 +42,16 @@ checkTimeResults:
             msg: '{releaseName} release is completed {build.buildRelativeTime}.'
           - currentBuildState: Running
             msg: '{releaseName} release started {build.prettyStartedTime}.'
+checkIssueDeployment:
+  - isDeployed: True
+    sub:
+      - tense: [future, None]
+        msg: '{issueNo} is already Deployed at {deploymentDate}.'
+      - temse: past
+        msg: '{issueNo} is Deployed at {deploymentDate}.'
+  - isDeployed: False
+    sub:
+      - tense: [future, None]
+        msg: '{issueNo} will be Deployed {nextDeploymentDate}.'
+      - temse: past
+        msg: '{issueNo} didn''t deploy yet, it will be Deployed {nextDeploymentDate}.'

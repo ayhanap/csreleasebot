@@ -1,11 +1,16 @@
+# -*- coding: utf-8 -*-
 import json
 import os
 
 import logging
 
 import dateutil.parser
+import datetime as dt
+
+import pytz
 import requests
 
+from csreleasebot import BambooAdapter
 from csreleasebot import Common
 
 jiraBaseURL = "http://issues.orioncb.com/rest/api/2/"
@@ -25,6 +30,8 @@ class Issue(object):
         self.resolutionId = None
         self.links = []
         self.resolutionDate = None
+        self.changelog = []
+        self.deploymentTimeSelection = None
         self.isInit = False
 
     @classmethod
@@ -43,13 +50,27 @@ class Issue(object):
         fields = issueJSON.get('fields')
         issue.statusName = fields.get('status').get('name')
         issue.statusCategoryId = fields.get('status').get('statusCategory').get('id')
+
         resolutionDate = fields.get('resolutiondate')
         if resolutionDate is not None:
             issue.resolutionDate = dateutil.parser.parse(resolutionDate)
+
         resolution = fields.get('resolution')
         if resolution is not None:
             issue.resolutionName = resolution.get('name')
             issue.resolutionId = int(resolution.get('id'))
+
+        deploymentTimeSelection = fields.get('customfield_10500')
+        if deploymentTimeSelection is not None:
+            issue.deploymentTimeSelection = deploymentTimeSelection.get('value')
+
+        changelog = issueJSON.get('changelog')
+        if changelog is not None:
+            histories = changelog.get('histories')
+            for history in histories:
+                items = history.get('items')
+                for item in items:
+                    issue.changelog.append({'changeDate': history.get('created'), 'item': item})
         return issue
 
     # fills sub variables if didnt exist at the creation
@@ -58,12 +79,14 @@ class Issue(object):
             val = super(Issue, self).__getattribute__(name)
             if val is None:
                 self.__dict__.update(self.fromIssueNo(self.key).__dict__)
-                print "INIT!"
+                print("INIT!")
                 return super(Issue, self).__getattribute__(name)
             return val
         return super(Issue, self).__getattribute__(name)
 
     def getLastReleaseIssue(self):
+        if self.getProjectKey() == 'CDBR':
+            return self
         releaseIssueLinks = []
         for issueLink in self.links:
             if issueLink.getProjectKey() == 'CDBR':
@@ -98,9 +121,36 @@ class Issue(object):
         else:
             return None
 
+    @property
+    def timeToNextDeployment(self):
+        lastReleaseIssue = self.getLastReleaseIssue()
+        if lastReleaseIssue is None:
+            return None
+        elif lastReleaseIssue.statusName == 'Ready To Deploy':
+            if lastReleaseIssue.deploymentTimeSelection is not None:
+                timeDeltaToNextBuild, buildTime = BambooAdapter.findNextNamedBuildTime('prod', lastReleaseIssue.deploymentTimeSelection)
+                return timeDeltaToNextBuild
+            else:
+                return None
+        else:
+            return None
+
+    @property
+    def lastTransitionDate(self):
+        statusChangeDates = []
+        for change in self.changelog:
+            if change.get('item').get('field') == 'status':
+                statusChangeDates.append(dateutil.parser.parse(change.get('changeDate')))
+
+        if len(statusChangeDates) == 0:
+            return None
+        else:
+            statusChangeDates.sort(reverse=True)
+            return statusChangeDates[0]
+
     @staticmethod
     def getIssueJSON(issueNo):
-        queryURL = jiraBaseURL + "issue/" + str(issueNo)
+        queryURL = jiraBaseURL + "issue/" + str(issueNo) + '?expand=changelog'
         jiraQueryResult = requests.get(queryURL, headers={'content-type': 'application/json', 'Accept': 'application/json'}, auth=(JIRA_USER, JIRA_PASS))
         issueJSON = json.loads(jiraQueryResult.text)
         logging.debug(issueJSON)
@@ -156,9 +206,16 @@ def checkIssueDeploymentState(req):
 
     issue = Issue.fromIssueNo(issueNo)
 
-    if issue.isDeployed:
-        speech = '%s is already Deployed.' % issue.key
-    else:
-        speech = '%s is not Deployed.' % issue.key
+    matchParameters = {'isDeployed': issue.isDeployed, 'tense': tense}
+
+    message = Common.getMessageFromFile('outputs.yaml', 'checkIssueDeployment', matchParameters)
+
+    deploymentDate = issue.deploymentDate
+    if deploymentDate is not None:
+        deploymentDate = Common.printDateTime(deploymentDate)
+
+    message = Common.fillParameters({'issueNo': issue.key, 'deploymentDate': deploymentDate, 'nextDeploymentDate': Common.printTimeDelta(issue.timeToNextDeployment)}, message)
+
+    speech = message
 
     return Common.makeCommonResponse(speech)

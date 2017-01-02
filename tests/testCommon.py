@@ -1,4 +1,7 @@
 import unittest
+import datetime as dt
+
+import dateutil.parser
 
 from csreleasebot import BambooAdapter
 from csreleasebot import Common
@@ -8,12 +11,12 @@ class TestCommon(unittest.TestCase):
 
     def testGetModelFromFile(self):
         parameters = {'releaseState': 'running', 'tense': 'past', 'buildResult': BambooAdapter.BuildState.COMPLETE.value}
-        message = Common.getMessageFromFile('outputs.yaml', 'checkTimeResults', parameters)
+        message = Common.getMessageFromFile('outputs.yaml', 'checkReleaseTime', parameters)
         self.assertEqual(message, '{releaseName} release is completed {build.buildRelativeTime}.')
 
     def testGetModelFromFile2(self):
         parameters = {'tense': 'past', 'currentBuildState': BambooAdapter.BuildState.RUNNING.value}
-        message = Common.getMessageFromFile('outputs.yaml', 'checkTimeResults', parameters)
+        message = Common.getMessageFromFile('outputs.yaml', 'checkReleaseTime', parameters)
         self.assertEqual(message, '{releaseName} will be completed in {build.prettyTimeRemaining}.')
 
     def testParameterExtraction(self):
@@ -39,6 +42,24 @@ class TestCommon(unittest.TestCase):
         valuesToFill = {'releaseName': 'prod', 'timeToNextBuild': timeToNextBuild}
         filledString = Common.fillParameters(valuesToFill, '{releaseName} release will start in {timeToNextBuild} hours.')
         self.assertEqual(filledString, 'prod release will start in 3:11:00 hours.')
+
+    def testPrintTimeDelta(self):
+        timeDelta = dt.timedelta(hours=12, minutes=35, seconds=23)
+        timeDeltaStr = Common.printTimeDelta(timeDelta)
+        self.assertEqual(timeDeltaStr, "12 hours, 35 minutes, 23 seconds later")
+
+        timeDeltaBefore = dt.timedelta(hours=-12, minutes=35, seconds=23)
+        timeDeltaBeforeStr = Common.printTimeDelta(timeDeltaBefore)
+        self.assertEqual(timeDeltaBeforeStr, "12 hours, 35 minutes, 23 seconds ago")
+
+        timeDeltaBefore = dt.timedelta(minutes=35, seconds=23)
+        timeDeltaBeforeStr = Common.printTimeDelta(timeDeltaBefore)
+        self.assertEqual(timeDeltaBeforeStr, "35 minutes, 23 seconds later")
+
+    def testPrintDatetime(self):
+        datetime = dateutil.parser.parse('2017-01-02T12:22:36.686+0200')
+        datetimeText = Common.printDateTime(datetime)
+        self.assertEqual(datetimeText, '02 January 2017 13:22:36')
 
 
 if __name__ == '__main__':

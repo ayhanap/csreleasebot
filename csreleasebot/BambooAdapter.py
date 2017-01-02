@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import datetime as dt
 import os
 import json
@@ -20,6 +21,10 @@ buildSchedulesMap = {
     "alfa": [dt.time(10, 30, 0), dt.time(12, 30, 0), dt.time(15, 30, 0), dt.time(17, 30, 0),
              dt.time(19, 30, 0), dt.time(20, 30, 0), dt.time(21, 30, 0), dt.time(22, 30, 0)],
     "ibank": [dt.time(0, 0, 0)],
+}
+
+buildSchedulesNamedMap = {
+    'Öğlen': dt.time(12, 0, 0), 'Akşam': dt.time(22, 0, 0)
 }
 
 BAMBOO_USER = os.environ['BAMBOO_USER']
@@ -96,12 +101,24 @@ def findBuildState(buildName):
 
 
 def findNextBuildTime(buildName):
-    currTime = dt.datetime.now(pytz.timezone('Europe/Istanbul'))
     for buildTime in buildSchedulesMap.get(buildName):
-        nextBuildTime = dt.timedelta(hours=buildTime.hour, minutes=buildTime.minute, seconds=buildTime.second) - \
-                           dt.timedelta(hours=currTime.hour, minutes=currTime.minute, seconds=currTime.minute)
-        if nextBuildTime > dt.timedelta():
-            return nextBuildTime, buildTime
+        timeDeltaToNextBuild = getTimeDiffFromDelta(buildTime)
+        if timeDeltaToNextBuild > dt.timedelta():
+            return timeDeltaToNextBuild, buildTime
+
+
+def findNextNamedBuildTime(buildName, scheduleName):
+    buildTime = buildSchedulesNamedMap.get(scheduleName)
+    timeDeltaToNextBuild = getTimeDiffFromDelta(buildTime)
+    return timeDeltaToNextBuild, buildTime
+
+
+def getTimeDiffFromDelta(buildTime):
+    currTime = dt.datetime.now(pytz.timezone('Europe/Istanbul'))
+    nextBuildTime = dt.timedelta(hours=buildTime.hour, minutes=buildTime.minute, seconds=buildTime.second) - \
+                    dt.timedelta(hours=currTime.hour, minutes=currTime.minute, seconds=currTime.minute)
+
+    return nextBuildTime
 
 
 def timeToNextBuild(parameters):
@@ -146,7 +163,7 @@ def checkReleaseTime(req):
 
     matchParameters = {'askedBuildState': askedReleaseState, 'tense': tense, 'currentBuildState': currentBuildState.value}
 
-    message = Common.getMessageFromFile('outputs.yaml', 'checkTimeResults', matchParameters)
+    message = Common.getMessageFromFile('outputs.yaml', 'checkReleaseTime', matchParameters)
 
     message = Common.fillParameters({'releaseName': releaseName, 'build': build, 'timeToNextBuild': timeToNextBuild}, message)
 

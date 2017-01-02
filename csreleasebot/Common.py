@@ -1,6 +1,8 @@
+import pytz
 import yaml
 import re
 import sys,os
+import datetime as dt
 
 
 def makeCommonResponse(speech):
@@ -70,7 +72,7 @@ def __handleItems(model, parameters):
     matchLevel = [None]*len(model)
     for i, item in enumerate(model):
         matchLevel[i] = 0
-        for parameterName, parameterValue in parameters.iteritems():
+        for parameterName, parameterValue in parameters.items():
             if parameterName in item:
                 matchLevel[i] -= 1000
                 itemValue = item.get(parameterName)
@@ -84,3 +86,35 @@ def __handleItems(model, parameters):
         return __handleItems(match.get('sub'), parameters)
     else:
         return match.get('msg')
+
+
+def printTimeDelta(timeDelta):
+    if timeDelta is None:
+        return None
+    seconds = timeDelta.seconds
+    hours = int(seconds / 3600)
+    seconds %= 3600
+    minutes = seconds / 60
+    seconds %= 60
+    parts = []
+    if hours > 0:
+        parts.append('%d hours' % hours)
+    if minutes > 0:
+        parts.append('%d minutes' % minutes)
+    if seconds > 0:
+        parts.append('%d seconds' % seconds)
+
+    text = ', '.join(parts)
+    if timeDelta.total_seconds() > 0:
+        text += ' later'
+    else:
+        text += ' ago'
+    return text
+
+
+def printDateTime(datetime):
+    if datetime is None:
+        return None
+    timeZoneLocal = pytz.timezone('Europe/Istanbul')
+    datetime = datetime.astimezone(timeZoneLocal)
+    return datetime.strftime('%d %B %Y %H:%M:%S')
